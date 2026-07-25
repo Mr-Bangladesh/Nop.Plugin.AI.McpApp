@@ -1,0 +1,83 @@
+
+@model Nop.Plugin.AI.McpApp.Models.PersonalAccessTokenModel
+
+<div id="mcpapp-token-container">
+	<form id="mcpapp-token-form">
+		@Html.AntiForgeryToken()
+	</form>
+
+	<div>
+		<strong>Your PAT:</strong>
+		<span id="mcpapp-masked">@Model.Masked</span>
+	</div>
+
+	<div style="margin-top:8px;">
+		<button id="mcpapp-generate-btn" class="btn btn-primary">@(Model.HasToken ? "Regenerate" : "Generate")</button>
+		<button id="mcpapp-copy-btn" class="btn btn-secondary" style="margin-left:8px;">Copy</button>
+	</div>
+
+	<div id="mcpapp-plain-section" style="display:none; margin-top:8px;">
+		<label>Copy this token now (shown only once):</label>
+		<input type="text" id="mcpapp-plain-token" readonly style="width:100%;" />
+	</div>
+</div>
+
+<script>
+	(function(){
+		var generateBtn = document.getElementById('mcpapp-generate-btn');
+		var copyBtn = document.getElementById('mcpapp-copy-btn');
+		var maskedEl = document.getElementById('mcpapp-masked');
+		var plainSection = document.getElementById('mcpapp-plain-section');
+		var plainInput = document.getElementById('mcpapp-plain-token');
+		var plainToken = null;
+
+		function getAntiForgeryToken(){
+			var tokenInput = document.querySelector('#mcpapp-token-form input[name="__RequestVerificationToken"]');
+			return tokenInput ? tokenInput.value : '';
+		}
+
+		generateBtn.addEventListener('click', function(e){
+			e.preventDefault();
+			var token = getAntiForgeryToken();
+			var url = '@Url.Action("GenerateToken", "McpAppPublic", new { area = "" })';
+			fetch(url, {
+				method: 'POST',
+				headers: {
+					'RequestVerificationToken': token,
+					'Accept': 'application/json'
+				},
+				credentials: 'same-origin'
+			}).then(function(r){ return r.json(); }).then(function(json){
+				if(json && json.success){
+					plainToken = json.token || null;
+					plainInput.value = plainToken || '';
+					if(plainToken){
+						plainSection.style.display = 'block';
+					}
+					maskedEl.textContent = json.masked || maskedEl.textContent;
+					generateBtn.textContent = 'Regenerate';
+				} else {
+					alert((json && json.message) || 'Failed to generate token');
+				}
+			}).catch(function(){
+				alert('Failed to generate token');
+			});
+		});
+
+		copyBtn.addEventListener('click', function(e){
+			e.preventDefault();
+			var toCopy = plainToken || maskedEl.textContent || '';
+			if(!toCopy) return;
+			if(navigator.clipboard && navigator.clipboard.writeText){
+				navigator.clipboard.writeText(toCopy).then(function(){
+					alert('Copied to clipboard');
+				}).catch(function(){
+					alert('Copy failed');
+				});
+			} else {
+				plainInput.select();
+				try { document.execCommand('copy'); alert('Copied to clipboard'); } catch(e){ alert('Copy failed'); }
+			}
+		});
+	})();
+</script>

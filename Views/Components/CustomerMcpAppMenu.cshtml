@@ -1,0 +1,6 @@
+@using Nop.Plugin.AI.McpApp
+@model Nop.Web.Models.Customer.CustomerNavigationModel
+
+<li class="customer-mcpapp @(Model.SelectedTab == McpAppDefaults.CustomerTokensTabId ? "active" : "inactive")">
+    <a href="@Url.RouteUrl(McpAppDefaults.CustomerTokensRouteName)">MCP Config</a>
+</li>

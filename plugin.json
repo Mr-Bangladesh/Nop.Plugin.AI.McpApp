@@ -1,0 +1,11 @@
+﻿{
+  "Group": "AI",
+  "FriendlyName": "MCP APP",
+  "SystemName": "AI.McpApp",
+  "Version": "0.1.0",
+  "SupportedVersions": [ "5.00" ],
+  "Author": "Faizul",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.AI.McpApp.dll",
+  "Description": "This plugin provides mcp tools and mcp app"
+}

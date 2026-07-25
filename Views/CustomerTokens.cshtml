@@ -1,0 +1,164 @@
+@model Nop.Plugin.AI.McpApp.Models.PersonalAccessTokenModel
+
+@{
+    Layout = "_ColumnsTwo";
+
+    NopHtml.AddTitleParts("PAT Management");
+    NopHtml.AddTitleParts(T("PageTitle.Account").Text);
+
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-mcpapp-pat-page");
+}
+
+@section left
+{
+    @await Component.InvokeAsync(typeof(CustomerNavigationViewComponent), new { selectedTabId = McpAppDefaults.CustomerTokensTabId })
+}
+
+<div class="page account-page customer-page">
+    <div class="page-title">
+        <h1>PAT Management</h1>
+    </div>
+
+    <div class="page-body">
+        <div id="mcpapp-token-container">
+            <form id="mcpapp-token-form">
+                @Html.AntiForgeryToken()
+                <section class="fieldset">
+                    <div class="form-fields">
+                        <div class="inputs">
+                            <label for="mcpapp-token-name">Token name</label>
+                            <input type="text" id="mcpapp-token-name" name="name" class="text-box single-line" maxlength="100" placeholder="Example: Web UI" />
+                        </div>
+                    </div>
+                    <div class="buttons">
+                        <button id="mcpapp-generate-btn" type="button" class="button-1">Generate</button>
+                    </div>
+                </section>
+            </form>
+
+            <div id="mcpapp-plain-section" style="display:none; margin-top:8px;">
+                <label>Copy this token now. It will only be shown once on this page:</label>
+                <input type="text" id="mcpapp-plain-token" readonly class="text-box single-line" style="width:100%;" />
+            </div>
+
+            <h3 style="margin-top:24px;">Token history</h3>
+            @if (Model.Tokens.Any())
+            {
+                <div class="table-wrapper" style="margin-top:8px;">
+                    <table class="data-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Token</th>
+                                <th>Created</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var token in Model.Tokens)
+                            {
+                                <tr style="@(token.CanRevoke ? "font-weight:bold;" : string.Empty)">
+                                    <td>@token.Name</td>
+                                    <td style="font-family:monospace;">@token.Masked</td>
+                                    <td>@token.CreatedOn</td>
+                                    <td>@(token.Revoked ? "Revoked" : "Active")</td>
+                                    <td>
+                                        @if (token.CanRevoke)
+                                        {
+                                            <button type="button" class="button-2 mcpapp-revoke-btn" data-token-id="@token.Id">Revoke</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p>No tokens found.</p>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var generateBtn = document.getElementById('mcpapp-generate-btn');
+        var plainSection = document.getElementById('mcpapp-plain-section');
+        var plainInput = document.getElementById('mcpapp-plain-token');
+        var maskedEl = document.getElementById('mcpapp-masked');
+        var tokenNameInput = document.getElementById('mcpapp-token-name');
+        var plainToken = null;
+
+        function getAntiForgeryToken() {
+            var tokenInput = document.querySelector('#mcpapp-token-form input[name="__RequestVerificationToken"]');
+            return tokenInput ? tokenInput.value : '';
+        }
+
+        if (generateBtn) {
+            generateBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var name = tokenNameInput ? tokenNameInput.value : '';
+                var token = getAntiForgeryToken();
+                var url = '@Url.RouteUrl(McpAppDefaults.GenerateTokenRouteName)';
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                    },
+                    body: 'name=' + encodeURIComponent(name),
+                    credentials: 'same-origin'
+                }).then(function (r) { return r.json(); }).then(function (json) {
+                    if (json && json.success) {
+                        plainToken = json.token || null;
+                        plainInput.value = plainToken || '';
+                        plainSection.style.display = 'block';
+                        maskedEl.textContent = json.masked || maskedEl.textContent;
+                        generateBtn.textContent = 'Generate another';
+                        tokenNameInput.value = '';
+                        plainInput.focus();
+                        plainInput.select();
+                    } else {
+                        alert((json && json.message) || 'Failed to generate token');
+                    }
+                }).catch(function () {
+                    alert('Failed to generate token');
+                });
+            });
+        }
+
+        document.querySelectorAll('.mcpapp-revoke-btn').forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                var tokenId = button.getAttribute('data-token-id');
+                var token = getAntiForgeryToken();
+                var url = '@Url.RouteUrl(McpAppDefaults.RevokeTokenRouteName)';
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                    },
+                    body: 'tokenId=' + encodeURIComponent(tokenId),
+                    credentials: 'same-origin'
+                }).then(function (r) { return r.json(); }).then(function (json) {
+                    if (json && json.success) {
+                        window.location.reload();
+                    } else {
+                        alert((json && json.message) || 'Failed to revoke token');
+                    }
+                }).catch(function () {
+                    alert('Failed to revoke token');
+                });
+            });
+        });
+    })();
+</script>
