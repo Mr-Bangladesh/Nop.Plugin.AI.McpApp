@@ -39,6 +39,7 @@ public class NopStartup : INopStartup
 
         services.AddMcpServer()
             .WithHttpTransport()
+            .AddAuthorizationFilters()
             .WithRequestFilters(requestFilters =>
             {
                 requestFilters.AddCallToolFilter(next => async (context, cancellationToken) =>
@@ -48,6 +49,12 @@ public class NopStartup : INopStartup
                 });
 
                 requestFilters.AddReadResourceFilter(next => async (context, cancellationToken) =>
+                {
+                    await ResolveCurrentCustomerAsync(context.User, context.Services);
+                    return await next(context, cancellationToken);
+                });
+
+                requestFilters.AddGetPromptFilter(next => async (context, cancellationToken) =>
                 {
                     await ResolveCurrentCustomerAsync(context.User, context.Services);
                     return await next(context, cancellationToken);
