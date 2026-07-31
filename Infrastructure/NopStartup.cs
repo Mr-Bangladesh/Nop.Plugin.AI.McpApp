@@ -33,6 +33,7 @@ public class NopStartup : INopStartup
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<NopCatalogTools>();
+        services.AddScoped<NopCartTools>();
         services.AddScoped<CatalogUiResources>();
         services.AddScoped<CartUiResources>();
         services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenService>();
