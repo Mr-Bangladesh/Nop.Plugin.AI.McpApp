@@ -37,6 +37,7 @@ public class NopStartup : INopStartup
         services.AddScoped<CatalogUiResources>();
         services.AddScoped<CartUiResources>();
         services.AddScoped<IPersonalAccessTokenService, PersonalAccessTokenService>();
+        services.AddScoped<ISimplifiedProductService, SimplifiedProductService>();
 
         services.AddMcpServer()
             .WithHttpTransport()
