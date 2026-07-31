@@ -6,10 +6,8 @@ using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Plugin.AI.McpApp.Models;
 using Nop.Services.Catalog;
-using Nop.Services.Customers;
 using Nop.Services.Orders;
 using Nop.Web.Factories;
-using Nop.Web.Models.ShoppingCart;
 
 namespace Nop.Plugin.AI.McpApp.Mcp.Tools;
 
@@ -18,27 +16,12 @@ public class NopCatalogTools
 {
     private readonly IProductService _productService;
     private readonly IProductModelFactory _productModelFactory;
-    private readonly IWorkContext _workContext;
-    private readonly IShoppingCartService _shoppingCartService;
-    private readonly IShoppingCartModelFactory _shoppingCartModelFactory;
-    private readonly IStoreContext _storeContext;
-    private readonly ICustomerService _customerService;
 
     public NopCatalogTools(IProductService productService,
-        IProductModelFactory productModelFactory,
-        IWorkContext workContext,
-        IShoppingCartService shoppingCartService,
-        IShoppingCartModelFactory shoppingCartModelFactory,
-        IStoreContext storeContext,
-        ICustomerService customerService)
+        IProductModelFactory productModelFactory)
     {
         _productService = productService;
         _productModelFactory = productModelFactory;
-        _workContext = workContext;
-        _shoppingCartService = shoppingCartService;
-        _shoppingCartModelFactory = shoppingCartModelFactory;
-        _storeContext = storeContext;
-        _customerService = customerService;
     }
 
     [McpServerTool(Name = "show_catalog")]
@@ -75,63 +58,6 @@ public class NopCatalogTools
                 price = p.ProductPrice?.Price ?? string.Empty,
                 imageUrl = p.PictureModels.FirstOrDefault()?.ImageUrl ?? string.Empty,
                 sku = p.Sku
-            })
-        };
-
-        return new CallToolResult
-        {
-            Content = new List<ContentBlock> { new TextContentBlock { Text = summary } },
-            StructuredContent = JsonSerializer.SerializeToElement(structured)
-        };
-    }
-
-    [McpServerTool(Name = "add_to_cart")]
-    [Description("Adds products to the shopping cart.")]
-    public async Task<CallToolResult> AddToCartAsync(AddToCartRequest request)
-    {
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        var store = await _storeContext.GetCurrentStoreAsync();
-        var product = await _productService.GetProductByIdAsync(request.ProductId);
-        if (product == null)
-        {
-            return new CallToolResult
-            {
-                Content = new List<ContentBlock> { new TextContentBlock { Text = $"Product with ID {request.ProductId} not found." } }
-            };
-        }
-
-        var warnings = await _shoppingCartService.AddToCartAsync(customer, product, ShoppingCartType.ShoppingCart, store.Id);
-
-        return new CallToolResult
-        {
-            Content = new List<ContentBlock> { new TextContentBlock { Text = warnings.FirstOrDefault() ?? "Product added to cart successfully." } }
-        };
-    }
-
-    [McpServerTool(Name = "show_cart")]
-    [Description("Shows the current customer's shopping cart.")]
-    [McpMeta("ui", JsonValue = """{"resourceUri": "ui://cart/show"}""")]
-    public async Task<CallToolResult> ShowCartAsync()
-    {
-        var customer = await _workContext.GetCurrentCustomerAsync();
-        var cart = await _shoppingCartService.GetShoppingCartAsync(customer, ShoppingCartType.ShoppingCart);
-        var model = await _shoppingCartModelFactory.PrepareShoppingCartModelAsync(new ShoppingCartModel(), cart);
-        var cartTotalModel = await _shoppingCartModelFactory.PrepareOrderTotalsModelAsync(cart, false);
-
-        var summary = $"Found {model.Items.Count} item(s) matching in cart.";
-
-        var structured = new
-        {
-            total = cartTotalModel.SubTotal,
-            products = model.Items.Select(item => new
-            {
-                productId = item.ProductId,
-                name = item.ProductName,
-                subTotal = item.SubTotal,
-                imageUrl = item.Picture.ImageUrl,
-                sku = item.Sku,
-                unitPrice = item.UnitPrice,
-                quantity = item.Quantity
             })
         };
 
