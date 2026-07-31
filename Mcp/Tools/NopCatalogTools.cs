@@ -2,11 +2,8 @@
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Nop.Core;
-using Nop.Core.Domain.Orders;
 using Nop.Plugin.AI.McpApp.Models;
-using Nop.Services.Catalog;
-using Nop.Services.Orders;
+using Nop.Plugin.AI.McpApp.Services;
 using Nop.Web.Factories;
 
 namespace Nop.Plugin.AI.McpApp.Mcp.Tools;
@@ -14,13 +11,13 @@ namespace Nop.Plugin.AI.McpApp.Mcp.Tools;
 [McpServerToolType]
 public class NopCatalogTools
 {
-    private readonly IProductService _productService;
+    private readonly ISimplifiedProductService _simplifiedProductService;
     private readonly IProductModelFactory _productModelFactory;
 
-    public NopCatalogTools(IProductService productService,
+    public NopCatalogTools(ISimplifiedProductService simplifiedProductService,
         IProductModelFactory productModelFactory)
     {
-        _productService = productService;
+        _simplifiedProductService = simplifiedProductService;
         _productModelFactory = productModelFactory;
     }
 
@@ -29,7 +26,7 @@ public class NopCatalogTools
     [McpMeta("ui", JsonValue = """{"resourceUri": "ui://catalog/search-results"}""")]
     public async Task<CallToolResult> ShowCatalogAsync(SearchCatalogRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request?.SearchQuery))
+        if (string.IsNullOrWhiteSpace(request?.Query))
         {
             return new CallToolResult
             {
@@ -37,20 +34,17 @@ public class NopCatalogTools
             };
         }
 
-        var products = await _productService.SearchProductsAsync(
-            keywords: request.SearchQuery,
-            pageSize: 20,
-            visibleIndividuallyOnly: true,
-            showHidden: false,
-            overridePublished: true);
+        // query, categoryids, manufacturerids, vendorid, pricemin, pricemax, orderby, pageindex, pagesize
+
+        var products = await _simplifiedProductService.SearchProductsAsync(request);
 
         var overviewModels = await _productModelFactory.PrepareProductOverviewModelsAsync(products);
 
-        var summary = $"Found {overviewModels.Count()} product(s) matching \"{request.SearchQuery}\".";
+        var summary = $"Found {overviewModels.Count()} product(s) matching \"{request.Query}\".";
 
         var structured = new
         {
-            query = request.SearchQuery,
+            query = request.Query,
             products = overviewModels.Select(p => new
             {
                 id = p.Id,
